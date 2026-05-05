@@ -73,7 +73,7 @@ export function QrScanner({ onResult, ready = true }: Props) {
       try {
         const state = s.getState();
         if (state === Html5QrcodeScannerState.SCANNING || state === Html5QrcodeScannerState.PAUSED) {
-          s.stop().catch(() => {}).finally(() => s.clear().catch(() => {}));
+         s.stop().catch(() => {}).finally(() => { try { s.clear(); } catch {} });
         }
       } catch { /* ignore */ }
     };

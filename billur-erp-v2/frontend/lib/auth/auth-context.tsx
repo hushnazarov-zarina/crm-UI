@@ -8,7 +8,7 @@ export interface User {
   username: string;
   full_name: string;
   role_id: string;
-  permissions: string[];
+  permissions?: string[];
 }
 
 interface AuthContextValue {
@@ -21,6 +21,13 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+function normalizeUser(user: User): User {
+  return {
+    ...user,
+    permissions: Array.isArray(user.permissions) ? user.permissions : [],
+  };
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -31,7 +38,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!token) { setLoading(false); return; }
       try {
         const me = await api.get<User>('/api/auth/me');
-        setUser(me);
+        setUser(normalizeUser(me));
       } catch {
         saveToken(null);
       } finally {
@@ -46,7 +53,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       username, password,
     });
     saveToken(res.token);
-    setUser(res.user);
+    setUser(normalizeUser(res.user));
   };
 
   const logout = async () => {
@@ -55,7 +62,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   };
 
-  const hasPermission = (perm: string) => !!user?.permissions.includes(perm);
+  const hasPermission = (perm: string) => {
+    if (!user) return false;
+
+    if (user.role_id === 'owner' || user.role_id === 'admin') {
+      return true;
+    }
+
+    return Array.isArray(user.permissions) && user.permissions.includes(perm);
+  };
 
   return (
     <AuthContext.Provider value={{ user, loading, login, logout, hasPermission }}>
